@@ -11,8 +11,11 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 class Config:
     """应用配置，支持环境变量覆盖。"""
 
-    # Stability AI
-    STABILITY_API_KEY: str = os.getenv("STABILITY_API_KEY", "")
+    # OpenRouter API
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_IMAGE_MODEL: str = os.getenv(
+        "OPENROUTER_IMAGE_MODEL", "openai/dall-e-3"
+    )
 
     # Gradio
     GRADIO_SERVER_NAME: str = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
