@@ -71,6 +71,19 @@ STYLE_TEMPLATES: dict[str, StyleTemplate] = {
         "gritty, complex shading, noise",
         recommended_size=(256, 256),
     ),
+    "dark-dungeon": StyleTemplate(
+        name="dark-dungeon",
+        label="暗黑地牢风 (Dark Dungeon)",
+        description="哥特暗黑风格，烛光高对比、锈蚀金属质感、压抑氛围",
+        style_prefix="dark dungeon crawler art, gothic horror game asset, "
+        "torch-lit medieval fantasy, ",
+        style_suffix=", high contrast chiaroscuro, rusted iron texture, "
+        "gritty dark fantasy, deep shadows, candlelight glow, "
+        "oppressive atmosphere, hand-drawn ink style, on dark background",
+        negative_prompt="bright, cheerful, colorful, cartoon, cute, "
+        "pastel, modern UI, clean and shiny, daylight, rainbow",
+        recommended_size=(512, 512),
+    ),
     "game-icon": StyleTemplate(
         name="game-icon",
         label="RPG 物品图标 (RPG Icons)",
