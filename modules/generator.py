@@ -1,4 +1,4 @@
-"""M1: Image generator via 硅基流动 (SiliconFlow) API."""
+"""M1: Image generator — 硅基流动主推 + Pollinations.ai 免费回退."""
 
 import base64
 import io
@@ -6,21 +6,15 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import quote
 
 import requests
 from PIL import Image
 
 SILICONFLOW_API_HOST = "https://api.siliconflow.cn"
+POLLINATIONS_HOST = "https://image.pollinations.ai"
 
-# 可用模型
-DEFAULT_MODEL = "Qwen/Qwen-Image"  # 支持中文提示词
-ALT_MODELS = {
-    "qwen": "Qwen/Qwen-Image",
-    "flux-dev": "black-forest-labs/FLUX.1-dev",
-    "flux-schnell": "black-forest-labs/FLUX.1-schnell",
-    "flux2-pro": "FLUX.2 [pro]",
-    "flux2-flex": "FLUX.2 [flex]",
-}
+DEFAULT_MODEL = "Qwen/Qwen-Image"
 
 
 @dataclass
@@ -28,37 +22,31 @@ class GenerationResult:
     image: Image.Image
     seed: int
     elapsed_ms: int
+    backend: str = ""
 
 
-def _api_key() -> str:
-    key = os.getenv("SILICONFLOW_API_KEY", "")
-    if not key:
-        raise RuntimeError(
-            "SILICONFLOW_API_KEY 环境变量未设置。"
-            "请在 https://cloud.siliconflow.cn 获取 API Key，"
-            "然后在项目根目录 .env 中添加: SILICONFLOW_API_KEY=your-key"
-        )
-    return key
+def _has_siliconflow_key() -> bool:
+    return bool(os.getenv("SILICONFLOW_API_KEY", ""))
 
 
 def _image_model() -> str:
     return os.getenv("SILICONFLOW_IMAGE_MODEL", DEFAULT_MODEL)
 
 
+# ── 硅基流动 backend ────────────────────────────────────────────
+
 def _call_siliconflow(payload: dict, timeout: int = 120) -> list[Image.Image]:
-    """调用硅基流动 Images API 生成图像。"""
+    key = os.getenv("SILICONFLOW_API_KEY", "")
     headers = {
-        "Authorization": f"Bearer {_api_key()}",
+        "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
-
     resp = requests.post(
         f"{SILICONFLOW_API_HOST}/v1/images/generations",
         headers=headers,
         json=payload,
         timeout=timeout,
     )
-
     if resp.status_code != 200:
         try:
             detail = resp.json()
@@ -68,25 +56,43 @@ def _call_siliconflow(payload: dict, timeout: int = 120) -> list[Image.Image]:
 
     data = resp.json()
     images: list[Image.Image] = []
-
     for item in data.get("images", []):
         url = item.get("url", "")
         b64 = item.get("b64_json", "")
         if b64:
-            img_bytes = base64.b64decode(b64)
-            images.append(Image.open(io.BytesIO(img_bytes)))
+            images.append(Image.open(io.BytesIO(base64.b64decode(b64))))
         elif url:
             img_resp = requests.get(url, timeout=60)
             img_resp.raise_for_status()
             images.append(Image.open(io.BytesIO(img_resp.content)))
-
     if not images:
-        raise RuntimeError("API 未返回任何图像，请检查提示词或网络连接。")
-
+        raise RuntimeError("API 未返回任何图像")
     return images
 
 
-# 尺寸预设 — 硅基流动使用 "WxH" 字符串格式
+# ── Pollinations.ai 免费 backend ─────────────────────────────────
+
+def _call_pollinations(
+    prompt: str,
+    width: int = 512,
+    height: int = 512,
+    seed: int = 0,
+    timeout: int = 120,
+) -> Image.Image:
+    """Pollinations.ai — 完全免费，无需 API Key。"""
+    encoded = quote(prompt, safe="")
+    url = (
+        f"{POLLINATIONS_HOST}/prompt/{encoded}"
+        f"?width={width}&height={height}&seed={seed}&nologo=true"
+    )
+    resp = requests.get(url, timeout=timeout)
+    if resp.status_code != 200:
+        raise RuntimeError(f"Pollinations API 返回 {resp.status_code}: {resp.text[:300]}")
+    return Image.open(io.BytesIO(resp.content))
+
+
+# ── Public API ───────────────────────────────────────────────────
+
 SIZE_PRESETS = {
     "正方形 512x512": (512, 512),
     "正方形 1024x1024": (1024, 1024),
@@ -113,27 +119,37 @@ def text_to_image(
     samples: int = 1,
     style_preset: Optional[str] = None,
 ) -> GenerationResult:
-    """文生图：通过硅基流动 API 调用 Qwen-Image / FLUX 等模型。"""
+    """文生图：硅基流动优先，余额不足自动回退 Pollinations.ai 免费接口。"""
     t0 = time.perf_counter()
-    model = _image_model()
 
-    payload: dict = {
-        "model": model,
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "image_size": _to_size_str(width, height),
-        "batch_size": min(samples, 4),
-        "num_inference_steps": steps,
-        "guidance_scale": cfg_scale,
-    }
-    if seed != 0:
-        payload["seed"] = seed
+    # 尝试硅基流动
+    if _has_siliconflow_key():
+        try:
+            model = _image_model()
+            payload: dict = {
+                "model": model,
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "image_size": _to_size_str(width, height),
+                "batch_size": min(samples, 4),
+                "num_inference_steps": steps,
+                "guidance_scale": cfg_scale,
+            }
+            if seed != 0:
+                payload["seed"] = seed
+            images = _call_siliconflow(payload)
+            elapsed = int((time.perf_counter() - t0) * 1000)
+            return GenerationResult(image=images[0], seed=seed, elapsed_ms=elapsed, backend="siliconflow")
+        except RuntimeError as e:
+            msg = str(e)
+            # 余额不足或鉴权失败 → 回退
+            if "30001" not in msg and "401" not in msg and "403" not in msg:
+                raise
 
-    images = _call_siliconflow(payload)
+    # 回退: Pollinations.ai 免费
+    image = _call_pollinations(prompt, width, height, seed)
     elapsed = int((time.perf_counter() - t0) * 1000)
-
-    result_seed = seed
-    return GenerationResult(image=images[0], seed=result_seed, elapsed_ms=elapsed)
+    return GenerationResult(image=image, seed=seed, elapsed_ms=elapsed, backend="pollinations")
 
 
 def image_to_image(
@@ -149,30 +165,42 @@ def image_to_image(
     samples: int = 1,
     style_preset: Optional[str] = None,
 ) -> GenerationResult:
-    """图生图：上传参考图进行风格迁移，通过硅基流动图像编辑模型实现。"""
+    """图生图：硅基流动优先，余额不足回退 Pollinations（通过增强提示词模拟）。"""
     t0 = time.perf_counter()
-    model = _image_model()
 
-    # 将参考图编码为 base64
-    buf = io.BytesIO()
-    init_image.save(buf, format="PNG")
-    buf.seek(0)
-    img_b64 = base64.b64encode(buf.read()).decode("utf-8")
+    if _has_siliconflow_key():
+        try:
+            model = _image_model()
+            buf = io.BytesIO()
+            init_image.save(buf, format="PNG")
+            buf.seek(0)
+            img_b64 = base64.b64encode(buf.read()).decode("utf-8")
 
-    payload: dict = {
-        "model": model,
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "image": img_b64,
-        "image_size": _to_size_str(width, height),
-        "batch_size": min(samples, 4),
-        "num_inference_steps": steps,
-        "guidance_scale": cfg_scale,
-    }
-    if seed != 0:
-        payload["seed"] = seed
+            payload: dict = {
+                "model": model,
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "image": img_b64,
+                "image_size": _to_size_str(width, height),
+                "batch_size": min(samples, 4),
+                "num_inference_steps": steps,
+                "guidance_scale": cfg_scale,
+            }
+            if seed != 0:
+                payload["seed"] = seed
+            images = _call_siliconflow(payload)
+            elapsed = int((time.perf_counter() - t0) * 1000)
+            return GenerationResult(image=images[0], seed=seed, elapsed_ms=elapsed, backend="siliconflow")
+        except RuntimeError as e:
+            msg = str(e)
+            if "30001" not in msg and "401" not in msg and "403" not in msg:
+                raise
 
-    images = _call_siliconflow(payload)
+    # 回退: Pollinations（增强提示词模拟风格迁移）
+    fallback_prompt = (
+        f"{prompt}, in the style of the reference image, same color palette, "
+        f"similar composition, artistic style transfer"
+    )
+    image = _call_pollinations(fallback_prompt, width, height, seed)
     elapsed = int((time.perf_counter() - t0) * 1000)
-
-    return GenerationResult(image=images[0], seed=seed, elapsed_ms=elapsed)
+    return GenerationResult(image=image, seed=seed, elapsed_ms=elapsed, backend="pollinations")
