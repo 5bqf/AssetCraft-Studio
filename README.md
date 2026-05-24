@@ -41,13 +41,13 @@ pip install -r requirements.txt
 在项目根目录创建 `.env` 文件：
 
 ```
-OPENROUTER_API_KEY=sk-or-v1-your-openrouter-key
-OPENROUTER_IMAGE_MODEL=openai/dall-e-3
+SILICONFLOW_API_KEY=your-siliconflow-api-key
+SILICONFLOW_IMAGE_MODEL=Qwen/Qwen-Image
 ```
 
-> 在 [openrouter.ai/keys](https://openrouter.ai/keys) 注册并获取 API Key。
-> 可选图像模型：`openai/dall-e-3`、`black-forest-labs/flux-1.1-pro` 等，
-> 通过 `OPENROUTER_IMAGE_MODEL` 环境变量指定。
+> 在 [cloud.siliconflow.cn](https://cloud.siliconflow.cn) 注册获取 API Key（新用户有免费额度）。
+> 可选模型：`Qwen/Qwen-Image`（中文友好）、`black-forest-labs/FLUX.1-dev`、
+> `FLUX.2 [pro]` 等，通过 `SILICONFLOW_IMAGE_MODEL` 指定。
 
 ### 3. 启动应用
 
@@ -114,7 +114,7 @@ AssetCraft-Studio/
 ├── config.py                   # 配置管理
 ├── requirements.txt            # 依赖列表
 ├── modules/
-│   ├── generator.py            # M1: OpenRouter Images API 封装
+│   ├── generator.py            # M1: 硅基流动 SiliconFlow API 封装
 │   ├── palette.py              # M2: K-means 颜色聚类
 │   ├── style_templates.py      # M2: 6 种风格提示词模板
 │   └── exporter.py             # M3: 批量生成 + ZIP 打包
@@ -125,7 +125,7 @@ AssetCraft-Studio/
 
 **技术选型**:
 - **Gradio 5.x**: 现代化 Web UI，支持 Hugging Face Spaces 一键部署
-- **OpenRouter Images API**: 统一网关调用 DALL-E 3 / Flux 等主流生图模型，无需本地 GPU
+- **硅基流动 SiliconFlow API**: 国内直连，调用 Qwen-Image / FLUX 等主流生图模型，中文提示词友好
 - **PIL/NumPy**: 自实现 K-means 颜色聚类，零额外 ML 依赖
 - **zipfile**: Python 标准库，生成引擎兼容的资源包
 
@@ -150,7 +150,7 @@ AssetCraft-Studio/
 
 本项目在规划和编码过程中得到了 Claude Code (Anthropic) 的深度协助，涵盖架构设计、代码生成、提示词工程优化等方面。这正是本工具致力于服务的场景——AI 与人类设计师的高效协作，将创意概念快速转化为可交付产品。
 
-同时也感谢 OpenRouter 提供的统一 AI 模型网关，以及 Gradio 团队打造的优秀 ML 应用框架。
+同时也感谢硅基流动 (SiliconFlow) 提供的国内图像生成 API，以及 Gradio 团队打造的优秀 ML 应用框架。
 
 ---
 

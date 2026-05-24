@@ -11,10 +11,10 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 class Config:
     """应用配置，支持环境变量覆盖。"""
 
-    # OpenRouter API
-    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
-    OPENROUTER_IMAGE_MODEL: str = os.getenv(
-        "OPENROUTER_IMAGE_MODEL", "openai/dall-e-3"
+    # 硅基流动 (SiliconFlow) API
+    SILICONFLOW_API_KEY: str = os.getenv("SILICONFLOW_API_KEY", "")
+    SILICONFLOW_IMAGE_MODEL: str = os.getenv(
+        "SILICONFLOW_IMAGE_MODEL", "Qwen/Qwen-Image"
     )
 
     # Gradio
