@@ -261,7 +261,11 @@ def create_ui():
 
             # ── Tab 3: 设计协调器 ──
             with gr.TabItem("设计协调器 (Design Coordinator)"):
-                gr.Markdown("### 灵感 → 色板 → 风格化素材")
+                gr.Markdown(
+                    """### 灵感 → 色板 → 风格化素材
+> 上传一张自己喜欢的游戏截图或参考图，AI 自动提取其核心配色，
+> 然后选择风格模板，一键生成同色系、同风格的游戏素材。"""
+                )
                 with gr.Row():
                     with gr.Column(scale=1):
                         ref_image = gr.Image(label="1. 上传参考图", type="pil", height=250)
