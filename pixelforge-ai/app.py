@@ -32,8 +32,6 @@ footer { visibility: hidden; }
 
 
 def create_ui():
-    theme = gr.themes.Soft(primary_hue="indigo", secondary_hue="slate")
-
     with gr.Blocks(title="PixelForge AI") as app:
         gr.Markdown(
             """# PixelForge AI
@@ -57,13 +55,14 @@ def create_ui():
 
 
 if __name__ == "__main__":
+    # 绕过 Windows 代理对 localhost 的拦截
+    import os as _os
+    _os.environ.setdefault("NO_PROXY", "localhost,127.0.0.1,0.0.0.0")
+    _os.environ.setdefault("no_proxy", "localhost,127.0.0.1,0.0.0.0")
+
     app = create_ui()
-    port = int(os.getenv("PORT", "7860"))
-    theme = gr.themes.Soft(primary_hue="indigo", secondary_hue="slate")
-    app.queue(max_size=20).launch(
-        server_name="0.0.0.0",
-        server_port=port,
+    app.launch(
+        server_name="127.0.0.1",
+        server_port=7860,
         share=False,
-        theme=theme,
-        css=CSS,
     )
