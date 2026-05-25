@@ -7,6 +7,9 @@ from config import GAME_STYLES, ASSET_TYPES, SIZE_PRESETS
 from core.generator import GameAssetGenerator
 from core.prompt_engine import PromptEngine
 from core.style_manager import StyleManager
+from core.animation import AnimationGenerator, ANIMATION_PRESETS
+from core.tileset import TilesetGenerator
+from core.color_palette import ColorPalette, GAME_PALETTES
 from exporters.unity_exporter import UnityExporter
 from exporters.godot_exporter import GodotExporter
 from exporters.cocos_exporter import CocosExporter
@@ -217,6 +220,10 @@ def create_ui():
                 gr.Markdown("### 粒子 · 爆炸 · 魔法")
                 _build_generation_tab("视觉特效")
 
+            with gr.TabItem("动画生成 (Animation)"):
+                gr.Markdown("### 动画序列帧 · 角色动作")
+                _build_animation_tab()
+
         gr.HTML("""
             <div class="pixelforge-footer">
                 PixelForge AI — 硅基流动 Qwen-Image · 支持 Unity / Godot / Cocos 导出 ·
@@ -225,6 +232,56 @@ def create_ui():
         """)
 
     return app
+
+
+# ── 动画 Tab ──────────────────────────────────────────────────
+
+ANIM_TYPE_CHOICES = [v["label"] for v in ANIMATION_PRESETS.values()]
+ANIM_KEY_MAP = {v["label"]: k for k, v in ANIMATION_PRESETS.items()}
+
+
+def on_generate_animation(subject, style_label, anim_label, size_choice, progress=gr.Progress()):
+    if not subject.strip():
+        return [], "请输入角色描述"
+
+    style = _parse_style(style_label)
+    anim = ANIM_KEY_MAP.get(anim_label, "idle")
+    w, h = _parse_size(size_choice)
+    gen = AnimationGenerator()
+
+    progress(0.3, desc="生成动画帧...")
+    try:
+        result = gen.generate_animation(subject, anim, style, w, h)
+    except Exception as e:
+        return [], f"生成失败: {str(e)[:200]}"
+
+    progress(1.0, desc="完成")
+    info = f"{len(result.frames)}帧 @ {result.fps}fps | {result.total_elapsed_ms / 1000:.1f}s"
+    return result.frames, info
+
+
+def _build_animation_tab():
+    with gr.Row():
+        with gr.Column(scale=1):
+            anim_subject = gr.Textbox(
+                label="角色描述", placeholder="如: knight warrior, fire wizard...", lines=2)
+            anim_style = gr.Dropdown(
+                label="风格", choices=STYLE_CHOICES, value=STYLE_CHOICES[0])
+            anim_type = gr.Dropdown(
+                label="动画类型", choices=ANIM_TYPE_CHOICES, value=ANIM_TYPE_CHOICES[0])
+            anim_size = gr.Dropdown(
+                label="尺寸", choices=SIZE_CHOICES, value=SIZE_CHOICES[3])
+            btn_anim = gr.Button("生成动画帧", variant="primary", size="lg")
+
+        with gr.Column(scale=1):
+            anim_gallery = gr.Gallery(label="动画帧序列", columns=4, height=350)
+            anim_status = gr.Textbox(label="状态", interactive=False)
+
+    btn_anim.click(
+        fn=on_generate_animation,
+        inputs=[anim_subject, anim_style, anim_type, anim_size],
+        outputs=[anim_gallery, anim_status],
+    )
 
 
 if __name__ == "__main__":
