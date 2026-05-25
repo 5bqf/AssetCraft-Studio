@@ -133,3 +133,43 @@ class StyleManager:
     def timestamp_seed() -> int:
         """基于时间戳生成种子。"""
         return int(time.time() * 1000) % 999999999
+
+    # ── 多图风格一致性增强 ──────────────────────────────────
+
+    def lock_style(
+        self,
+        profile_name: str,
+        style: str = "pixel_art",
+        width: int = 256,
+        height: int = 256,
+        **kwargs,
+    ) -> StyleProfile:
+        """锁定一个风格档案，后续所有生成使用相同的种子基。
+
+        确保跨批次生成的多组素材保持视觉风格统一。
+        """
+        seed_base = kwargs.pop("seed_base", None) or self.make_seed_from_string(profile_name)
+        return self.create_profile(
+            profile_name, style=style,
+            seed_base=seed_base, width=width, height=height, **kwargs,
+        )
+
+    def consistent_seed_sequence(self, profile_name: str, group_count: int, items_per_group: int) -> list[list[int]]:
+        """为多组素材生成一致的种子序列。
+
+        每组有独立的基础种子（组间差异），
+        但组内种子递增一致（组内连贯）。
+        """
+        seeds = []
+        for g in range(group_count):
+            group_base = self.make_seed_from_string(f"{profile_name}_group_{g}")
+            group_seeds = [group_base + i for i in range(items_per_group)]
+            seeds.append(group_seeds)
+        return seeds
+
+    def get_or_create_profile(self, name: str, **kwargs) -> StyleProfile:
+        """获取已有档案，不存在则创建。"""
+        existing = self.get_profile(name)
+        if existing:
+            return existing
+        return self.create_profile(name, **kwargs)
