@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  pixelforge:
+    build: .
+    ports:
+      - "7860:7860"
+    env_file:
+      - .env
+    volumes:
+      - ./static/outputs:/app/static/outputs
+      - ./static/cache:/app/static/cache
+    restart: unless-stopped
