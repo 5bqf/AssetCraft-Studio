@@ -6,6 +6,7 @@ from .style_manager import StyleManager, StyleProfile
 from .animation import AnimationGenerator, AnimationResult, ANIMATION_PRESETS
 from .tileset import TilesetGenerator, TilesetResult, TILESET_THEMES
 from .color_palette import ColorPalette, PaletteColor, GAME_PALETTES
+from .cache import GenerationCache
 
 __all__ = [
     "GameAssetGenerator",
@@ -23,4 +24,5 @@ __all__ = [
     "ColorPalette",
     "PaletteColor",
     "GAME_PALETTES",
+    "GenerationCache",
 ]

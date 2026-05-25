@@ -11,6 +11,7 @@ import requests
 from PIL import Image
 
 from config import Config, GAME_STYLES, ASSET_TYPES
+from .cache import GenerationCache
 
 
 @dataclass
@@ -43,6 +44,7 @@ class GameAssetGenerator:
                 "SILICONFLOW_API_KEY 未设置。"
                 "请在 pixelforge-ai/.env 中配置 API Key。"
             )
+        self.cache = GenerationCache()
 
     # ── 公开 API ──────────────────────────────────────────────
 
@@ -74,6 +76,16 @@ class GameAssetGenerator:
         full_prompt = self._build_prompt(prompt, style, asset_type)
         full_negative = negative_prompt or self._build_negative(style)
 
+        # 缓存检查
+        cached = self.cache.get(full_prompt, seed, width, height)
+        if cached is not None:
+            elapsed = int((time.perf_counter() - t0) * 1000)
+            return GenerationResult(
+                image=cached, prompt=full_prompt, style=style,
+                asset_type=asset_type, seed=seed, elapsed_ms=elapsed,
+                backend="cache",
+            )
+
         # 调用 API
         image = self._call_api(
             prompt=full_prompt,
@@ -83,6 +95,9 @@ class GameAssetGenerator:
             steps=steps,
             seed=seed,
         )
+
+        # 存入缓存
+        self.cache.set(image, full_prompt, seed, width, height)
 
         elapsed = int((time.perf_counter() - t0) * 1000)
         return GenerationResult(
