@@ -26,6 +26,8 @@ EXPORT_ENGINES = ["Unity", "Godot", "Cocos Creator"]
 CSS = """
 .gradio-container { max-width: 1100px !important; margin: 0 auto !important; }
 footer { visibility: hidden; }
+.pixelforge-footer { text-align: center; color: #888; padding: 1.5rem 0 0.5rem; font-size: 0.85rem; }
+.pixelforge-footer a { color: #7c8aff; text-decoration: none; }
 """
 
 
@@ -215,6 +217,13 @@ def create_ui():
                 gr.Markdown("### 粒子 · 爆炸 · 魔法")
                 _build_generation_tab("视觉特效")
 
+        gr.HTML("""
+            <div class="pixelforge-footer">
+                PixelForge AI — 硅基流动 Qwen-Image · 支持 Unity / Godot / Cocos 导出 ·
+                <a href="https://github.com/5bqf/AssetCraft-Studio" target="_blank">GitHub</a>
+            </div>
+        """)
+
     return app
 
 
@@ -224,4 +233,11 @@ if __name__ == "__main__":
     _os.environ.setdefault("no_proxy", "localhost,127.0.0.1,0.0.0.0")
 
     app = create_ui()
-    app.launch(server_name="127.0.0.1", server_port=7860, share=False)
+    theme = gr.themes.Soft(primary_hue="indigo", secondary_hue="slate")
+    app.launch(
+        server_name="127.0.0.1",
+        server_port=7860,
+        share=False,
+        theme=theme,
+        css=CSS,
+    )
