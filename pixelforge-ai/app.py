@@ -85,6 +85,37 @@ def on_generate(prompt_text, style_label, template_label, negative, size_choice,
     return result.image, info, None
 
 
+def on_batch_generate(prompt_text, style_label, template_label, negative, size_choice, seed, count,
+                     progress=gr.Progress()):
+    """批量生成 — 同风格多素材。"""
+    if not prompt_text.strip():
+        return [], "请输入素材描述"
+
+    style = _parse_style(style_label)
+    tmpl = _parse_template(template_label)
+    w, h = _parse_size(size_choice)
+    base_seed = int(seed or 0)
+    results = []
+
+    for i in range(int(count)):
+        progress(float(i) / float(count), desc=f"生成第 {i + 1}/{count} 个...")
+        full_prompt = prompt_engine.build(prompt_text, tmpl, style)
+        full_neg = negative or prompt_engine.build_negative(tmpl, style)
+        try:
+            result = generator.generate_sprite(
+                prompt=full_prompt, style=style, asset_type="sprite",
+                width=w, height=h, negative_prompt=full_neg,
+                seed=base_seed + i if base_seed else 0,
+            )
+            results.append(result.image)
+        except Exception as e:
+            return results, f"第 {i + 1} 个失败: {str(e)[:150]}"
+
+    progress(1.0, desc="批量完成")
+    info = f"批量生成完成 | {len(results)}/{count} 个 | {w}×{h} | 风格={style_label}"
+    return results, info
+
+
 def on_export(image, engine_choice, name, progress=gr.Progress()):
     """导出当前图片到指定引擎。"""
     if image is None:
@@ -106,7 +137,7 @@ def on_export(image, engine_choice, name, progress=gr.Progress()):
 # ── 构建单个 Tab 的控件 ────────────────────────────────────────
 
 def _build_generation_tab(asset_label: str):
-    """构建一个完整的素材生成 Tab，返回所有组件。"""
+    """构建一个完整的素材生成 Tab。"""
     with gr.Row():
         with gr.Column(scale=1):
             style_dd = gr.Dropdown(
@@ -121,10 +152,19 @@ def _build_generation_tab(asset_label: str):
                 size_dd = gr.Dropdown(
                     label="尺寸", choices=SIZE_CHOICES, value=SIZE_CHOICES[3])
                 seed_num = gr.Number(label="Seed (0=随机)", value=0, precision=0)
+
+            # 高级面板
+            with gr.Accordion("高级设置", open=False):
+                batch_count = gr.Slider(
+                    1, 6, value=1, step=1, label="批量生成数量")
+                btn_batch = gr.Button("批量生成", variant="secondary")
+
             btn_gen = gr.Button("生成", variant="primary", size="lg")
 
         with gr.Column(scale=1):
-            output_img = gr.Image(label="生成结果", type="pil", height=350)
+            output_img = gr.Image(label="生成结果", type="pil", height=280)
+            output_gallery = gr.Gallery(
+                label="批量结果", columns=3, height=280, visible=False)
             status_txt = gr.Textbox(label="状态", interactive=False)
             with gr.Row():
                 engine_dd = gr.Dropdown(
@@ -137,6 +177,11 @@ def _build_generation_tab(asset_label: str):
         fn=on_generate,
         inputs=[prompt_tb, style_dd, template_dd, negative_tb, size_dd, seed_num],
         outputs=[output_img, status_txt, download_file],
+    )
+    btn_batch.click(
+        fn=on_batch_generate,
+        inputs=[prompt_tb, style_dd, template_dd, negative_tb, size_dd, seed_num, batch_count],
+        outputs=[output_gallery, status_txt],
     )
     btn_export.click(
         fn=on_export,
