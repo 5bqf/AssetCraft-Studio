@@ -5,6 +5,7 @@ from .prompt_engine import PromptEngine, PromptTemplate
 from .style_manager import StyleManager, StyleProfile
 from .animation import AnimationGenerator, AnimationResult, ANIMATION_PRESETS
 from .tileset import TilesetGenerator, TilesetResult, TILESET_THEMES
+from .color_palette import ColorPalette, PaletteColor, GAME_PALETTES
 
 __all__ = [
     "GameAssetGenerator",
@@ -19,4 +20,7 @@ __all__ = [
     "TilesetGenerator",
     "TilesetResult",
     "TILESET_THEMES",
+    "ColorPalette",
+    "PaletteColor",
+    "GAME_PALETTES",
 ]
