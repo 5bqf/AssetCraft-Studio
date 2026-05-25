@@ -153,7 +153,9 @@ docker-compose up -d    # 访问 http://localhost:7860
 
 ### 在线演示
 
-> 演示视频：*[B站链接待补充]*
+> 演示视频：[PixelForge AI — 2D 游戏素材生成器](https://b23.tv/3jsCy5s)
+>
+> 作者 B 站：[小白花不白](https://b23.tv/3jsCy5s)
 >
 > 在线体验：*[Hugging Face Spaces 链接待补充]*
 
