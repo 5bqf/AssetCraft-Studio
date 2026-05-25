@@ -60,8 +60,9 @@ SERVICE
 cat > /etc/nginx/sites-available/pixelforge << 'NGINX'
 server {
     listen 80;
-    server_name _;
+    server_name baiqingfeng.xyz pixelforge.baiqingfeng.xyz;
 
+    # Gradio WebSocket 支持
     location / {
         proxy_pass http://127.0.0.1:7860;
         proxy_http_version 1.1;
@@ -69,6 +70,7 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
     }

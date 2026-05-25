@@ -1,5 +1,5 @@
 @echo off
-REM PixelForge AI — Windows 端上传部署脚本
+REM PixelForge AI — 部署到 baiqingfeng.xyz (阿里云 ECS)
 REM 用法: deploy.bat <ECS公网IP>
 
 if "%1"=="" (
@@ -10,25 +10,17 @@ if "%1"=="" (
 
 set ECS_IP=%1
 
-echo === 上传 pixelforge-ai 到阿里云 ECS ===
+echo === 1/3 上传代码到 ECS ===
+scp -r app.py config.py requirements.txt .env.example core exporters static root@%ECS_IP%:/opt/pixelforge-ai/
+scp -r core root@%ECS_IP%:/opt/pixelforge-ai/
+scp .env root@%ECS_IP%:/opt/pixelforge-ai/
 
-REM 上传代码 (排除缓存和虚拟环境)
-scp -r ^
-    --exclude="__pycache__" ^
-    --exclude="*.pyc" ^
-    --exclude=".pytest_cache" ^
-    --exclude="static/cache" ^
-    --exclude="static/exports" ^
-    --exclude="static/outputs" ^
-    --exclude="venv" ^
-    c:\Users\b2020\Desktop\AssetCraft-Studio\pixelforge-ai ^
-    root@%ECS_IP%:/opt/
+echo === 2/3 执行远程安装 ===
+ssh root@%ECS_IP% "bash /opt/pixelforge-ai/deploy/aliyun/setup.sh"
 
-REM 上传 .env (如需要)
-scp c:\Users\b2020\Desktop\AssetCraft-Studio\pixelforge-ai\.env root@%ECS_IP%:/opt/pixelforge-ai/
-
-echo === 执行远程部署脚本 ===
-ssh root@%ECS_IP% "cd /opt/pixelforge-ai && bash deploy/aliyun/setup.sh"
-
-echo === 完成 ===
-echo 访问: http://%ECS_IP%
+echo === 3/3 完成 ===
+echo.
+echo 浏览器打开: http://baiqingfeng.xyz
+echo 或: http://%ECS_IP%
+echo.
+echo 查看状态: ssh root@%ECS_IP% "systemctl status pixelforge"
