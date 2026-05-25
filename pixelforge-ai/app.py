@@ -52,7 +52,8 @@ def _get_exporter(engine: str, output_root: str = "static/exports"):
         return CocosExporter(output_root=output_root)
 
 
-def on_generate(prompt_text, style_label, template_label, negative, size_choice, seed):
+def on_generate(prompt_text, style_label, template_label, negative, size_choice, seed,
+                progress=gr.Progress()):
     """通用生成函数 — 所有 Tab 共用。"""
     if not prompt_text.strip():
         return None, "请输入素材描述", None
@@ -61,33 +62,44 @@ def on_generate(prompt_text, style_label, template_label, negative, size_choice,
     tmpl = _parse_template(template_label)
     w, h = _parse_size(size_choice)
 
-    # 用 PromptEngine 构建增强提示词
+    progress(0.1, desc="构建提示词...")
     full_prompt = prompt_engine.build(prompt_text, tmpl, style)
     full_neg = negative or prompt_engine.build_negative(tmpl, style)
 
-    result = generator.generate_sprite(
-        prompt=full_prompt,
-        style=style,
-        asset_type="sprite",
-        width=w, height=h,
-        negative_prompt=full_neg,
-        seed=int(seed or 0),
-    )
+    progress(0.3, desc="调用 AI 生成中...")
+    try:
+        result = generator.generate_sprite(
+            prompt=full_prompt,
+            style=style,
+            asset_type="sprite",
+            width=w, height=h,
+            negative_prompt=full_neg,
+            seed=int(seed or 0),
+        )
+    except Exception as e:
+        return None, f"生成失败: {str(e)[:200]}", None
 
-    info = f"生成成功 | {result.elapsed_ms}ms | {w}×{h} | seed={result.seed}"
+    progress(0.9, desc="处理结果...")
+    info = f"生成成功 | {result.elapsed_ms / 1000:.1f}s | {w}×{h} | seed={result.seed} | backend={result.backend}"
+    progress(1.0, desc="完成")
     return result.image, info, None
 
 
-def on_export(image, engine_choice, name):
+def on_export(image, engine_choice, name, progress=gr.Progress()):
     """导出当前图片到指定引擎。"""
     if image is None:
         return None, "请先生成素材"
     if not name.strip():
         name = "asset"
 
+    progress(0.2, desc="创建引擎资源...")
     exporter = _get_exporter(engine_choice)
     exporter.export_sprite(image, name.strip(), "sprite", "pixel_art")
+
+    progress(0.7, desc="打包 ZIP...")
     result = exporter.finalize()
+
+    progress(1.0, desc="导出完成")
     return result.zip_path, f"已导出: {os.path.basename(result.zip_path)}"
 
 
